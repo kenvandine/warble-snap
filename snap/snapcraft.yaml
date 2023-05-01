@@ -1,0 +1,52 @@
+name: warble
+base: core22
+adopt-info: warble
+grade: stable
+confinement: strict
+compression: lzo
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+
+layout:
+  /usr/share/com.github.avojak.warble:
+    bind: $SNAP/usr/share/com.github.avojak.warble
+
+slots:
+  # for GtkApplication registration
+  warble:
+    interface: dbus
+    bus: session
+    name: com.github.avojak.warble
+
+parts:
+  granite:
+    source: https://github.com/elementary/granite.git
+    source-tag: 6.2.0
+    meson-parameters: [ --prefix=/usr ]
+    plugin: meson
+    override-pull: |
+      craftctl default
+      patch -p1 < $CRAFT_PROJECT_DIR/snap/local/patches/as.patch
+
+  warble:
+    after: [ granite ]
+    source: https://github.com/avojak/warble.git
+    source-tag: 1.5.0
+    plugin: meson
+    meson-parameters: [ --prefix=/usr ]
+    parse-info: [usr/share/metainfo/com.github.avojak.warble.appdata.xml]
+    override-pull: |
+      craftctl default
+      sed -i.bak -e 's|Icon=@icon@|Icon=${SNAP}/meta/gui/warble.svg|g' $CRAFT_PART_SRC/data/com.github.avojak.warble.desktop.in.in
+    override-build: |
+      craftctl default
+      mkdir -p $CRAFT_PART_INSTALL/meta/gui/
+      cp $CRAFT_PART_SRC/data/assets/icons/128x128/com.github.avojak.warble.svg $CRAFT_PART_INSTALL/meta/gui/warble.svg
+
+apps:
+  warble:
+    extensions: [gnome]
+    desktop: usr/share/applications/com.github.avojak.warble.desktop
+    command: usr/bin/com.github.avojak.warble
+    common-id: com.github.avojak.warble
